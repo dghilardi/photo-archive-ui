@@ -84,7 +84,6 @@ pub struct ImportSourceArgs {
     pub source_name: String,
     pub source_group: String,
     pub source_tags: Vec<String>,
-    pub target: PathBuf,
 }
 
 #[derive(Clone, Serialize)]
@@ -92,6 +91,7 @@ pub enum SynchronizationEventJson {
     Stored { src: PathBuf, dst: PathBuf, generated: bool },
     Skipped { src: PathBuf, existing: PathBuf },
     Errored { src: PathBuf, cause: String },
+    Completed,
 }
 
 impl From<SynchronizationEvent> for SynchronizationEventJson {
@@ -111,11 +111,12 @@ pub struct RunningTaskDto {
 }
 
 #[tauri::command]
-pub fn import_source(window: Window, args: ImportSourceArgs) -> common::Result<RunningTaskDto> {
-    if !args.target.exists() {
-        create_dir_all(&args.target)
+pub fn import_source(window: Window, state: State<PhotoArchiveState>, args: ImportSourceArgs) -> common::Result<RunningTaskDto> {
+    let archive_dir = { state.archive_path.lock().expect("Error reading archive path") }.clone();
+    if !archive_dir.exists() {
+        create_dir_all(&archive_dir)
             .context("Error during target dir creation")?;
-    } else if !args.target.is_dir() {
+    } else if !archive_dir.is_dir() {
         return Err(anyhow!("Target path is not a directory").into())
     }
 
@@ -126,7 +127,7 @@ pub fn import_source(window: Window, args: ImportSourceArgs) -> common::Result<R
             group: args.source_group,
             tags: args.source_tags,
         },
-    }, &args.target)?;
+    }, &archive_dir)?;
 
     let task_id = format!("import-source-{}", Uuid::new_v4());
     let out = RunningTaskDto {
@@ -141,7 +142,15 @@ pub fn import_source(window: Window, args: ImportSourceArgs) -> common::Result<R
             }
         }
 
-        task.join().unwrap();
+        let join_out = task.join();
+        if let Err(err) = join_out {
+            eprintln!("Error joining worker threads - {err}");
+        }
+
+        let emit_out = window.emit(&task_id, SynchronizationEventJson::Completed);
+        if let Err(err) = emit_out {
+            eprintln!("Error emitting event - {err}");
+        }
     });
 
     Ok(out)
@@ -151,15 +160,15 @@ pub fn import_source(window: Window, args: ImportSourceArgs) -> common::Result<R
 #[serde(rename_all = "camelCase")]
 pub struct SyncSourceArgs {
     pub source_id: String,
-    pub target: PathBuf,
 }
 
 #[tauri::command]
-pub fn sync_source(window: Window, args: SyncSourceArgs) -> common::Result<RunningTaskDto> {
-    if !args.target.exists() {
-        create_dir_all(&args.target)
+pub fn sync_source(window: Window, state: State<PhotoArchiveState>, args: SyncSourceArgs) -> common::Result<RunningTaskDto> {
+    let archive_dir = { state.archive_path.lock().expect("Error reading archive path") }.clone();
+    if !archive_dir.exists() {
+        create_dir_all(&archive_dir)
             .context("Error during target dir creation")?;
-    } else if !args.target.is_dir() {
+    } else if !archive_dir.is_dir() {
         return Err(anyhow!("Target path is not a directory").into())
     }
 
@@ -167,9 +176,9 @@ pub fn sync_source(window: Window, args: SyncSourceArgs) -> common::Result<Runni
         source: SyncSource::Existing {
             id: args.source_id,
         },
-    }, &args.target)?;
+    }, &archive_dir)?;
 
-    let task_id = format!("import-source-{}", Uuid::new_v4());
+    let task_id = format!("sync-source-{}", Uuid::new_v4());
     let out = RunningTaskDto {
         task_id: task_id.clone()
     };
@@ -182,7 +191,15 @@ pub fn sync_source(window: Window, args: SyncSourceArgs) -> common::Result<Runni
             }
         }
 
-        task.join().unwrap();
+        let join_out = task.join();
+        if let Err(err) = join_out {
+            eprintln!("Error joining worker threads - {err}");
+        }
+
+        let emit_out = window.emit(&task_id, SynchronizationEventJson::Completed);
+        if let Err(err) = emit_out {
+            eprintln!("Error emitting event - {err}");
+        }
     });
 
     Ok(out)
