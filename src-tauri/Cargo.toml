@@ -16,6 +16,12 @@ tauri-build = { version = "1.4", features = [] }
 tauri = { version = "1.4", features = ["shell-open"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+photo-archive = { git = "https://github.com/dghilardi/photo-archive.git" }
+anyhow = "1.0"
+thiserror = "1.0"
+dirs = "5.0.1"
+toml = "0.7.6"
+uuid = { version = "1.4.1", features = ["v4"] }
 
 [features]
 # this feature is used for production builds or when `devPath` points to the filesystem
