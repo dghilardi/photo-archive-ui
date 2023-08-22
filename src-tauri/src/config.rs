@@ -2,9 +2,8 @@ use std::fs;
 use std::path::PathBuf;
 use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
-use crate::state::PhotoArchiveState;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct PhotoArchiveConfig {
     pub archive_dir: PathBuf,
 }
