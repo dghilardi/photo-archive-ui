@@ -31,6 +31,7 @@ pub enum RegistrationState {
 #[derive(Serialize)]
 #[serde(tag = "state", rename_all = "kebab-case")]
 pub enum ConnectionState {
+    #[serde(rename_all = "camelCase")]
     Connected { mount_point: PathBuf },
     Disconnected,
 }
@@ -44,9 +45,18 @@ pub fn list_sources(state: State<PhotoArchiveState>) -> common::Result<Vec<Archi
         .map(|source| (source.id.clone(), source))
         .collect::<HashMap<_, _>>();
 
-    let mut sources = list_mounted_partitions()
-        .context("Error reading partitions")?
+    let mounted_partitions = list_mounted_partitions()
+        .context("Error reading partitions")?;
+
+    let source_id_count = mounted_partitions.iter()
+        .fold(HashMap::new(), |mut acc, item| {
+            *acc.entry(item.info.partition_id.clone()).or_insert(0) += 1;
+            acc
+        });
+
+    let mut sources = mounted_partitions
         .into_iter()
+        .filter(|source| source_id_count.get(&source.info.partition_id).cloned().unwrap_or(0) == 1)
         .map(|mount| ArchiveSource {
             registration: registered_sources.remove(&mount.info.partition_id)
                 .map(|source| RegistrationState::Registered { name: source.name, group: source.group })

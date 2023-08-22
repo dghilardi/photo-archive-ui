@@ -1,51 +1,51 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
+import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/tauri";
 import "./App.css";
+import Grid from "@mui/material/Unstable_Grid2";
+import { Button, Card, Typography } from "@mui/material";
+import { SaveAlt, Sync, SyncDisabled } from "@mui/icons-material";
+
+interface ArchiveSourceDto {
+  id: string,
+  registration: { state: 'unregistered' } | {
+    state: 'registered',
+    name: string,
+    group: string,
+  },
+  connection: { state: 'disconnected' } | {
+    state: 'connected',
+    mountPoint: string,
+  },
+}
 
 function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
+  const [sources, setSources] = useState<Array<ArchiveSourceDto>>([]);
 
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
-    setGreetMsg(await invoke("greet", { name }));
-  }
+  useEffect(() => {
+    invoke('list_sources')
+      .then(res => {
+        console.log(res);
+        setSources(res as Array<ArchiveSourceDto>)
+      })
+  }, [])
 
   return (
     <div className="container">
-      <h1>Welcome to Tauri!</h1>
+      <h1>Welcome to Photo Archive!</h1>
 
-      <div className="row">
-        <a href="https://vitejs.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://reactjs.org" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
-
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
-        }}
-      >
-        <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
-        />
-        <button type="submit">Greet</button>
-      </form>
-
-      <p>{greetMsg}</p>
+      <Grid container spacing={2}>
+        {sources.map(source => {
+          const label = source.registration.state === 'registered' ? source.registration.name 
+            : source.connection.state === 'connected' ? source.connection.mountPoint 
+            : source.id;
+          
+          return <Grid key={source.id} xs={4}>
+            <Button variant="outlined" fullWidth endIcon={source.connection.state === 'disconnected' ? <SyncDisabled /> : source.registration.state === 'registered' ? <Sync /> : <SaveAlt />}>
+              <Typography noWrap>{label}</Typography>
+            </Button>
+          </Grid>;
+        })}
+      </Grid>
     </div>
   );
 }
