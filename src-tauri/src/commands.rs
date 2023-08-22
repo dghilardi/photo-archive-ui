@@ -1,9 +1,11 @@
 use std::collections::HashMap;
 use std::fs::create_dir_all;
+use std::ops::Add;
 use std::path::PathBuf;
 use std::thread;
+use std::time::{Duration, SystemTime};
 use anyhow::{anyhow, Context};
-use photo_archive::archive::sync::{SynchronizationEvent, synchronize_source, SyncOpts, SyncSource};
+use photo_archive::archive::sync::{SynchronizationEvent, synchronize_source, SyncOpts, SyncrhonizationTask, SyncSource};
 use photo_archive::common::fs::{list_mounted_partitions, partition_by_id};
 use photo_archive::repository::sources::SourcesRepo;
 use serde::{Deserialize, Serialize};
@@ -87,6 +89,7 @@ pub struct ImportSourceArgs {
 }
 
 #[derive(Clone, Serialize)]
+#[serde(tag = "eventType", rename_all = "kebab-case")]
 pub enum SynchronizationEventJson {
     Stored { src: PathBuf, dst: PathBuf, generated: bool },
     Skipped { src: PathBuf, existing: PathBuf },
@@ -135,25 +138,40 @@ pub fn import_source(window: Window, state: State<PhotoArchiveState>, args: Impo
     };
 
     thread::spawn(move || {
-        while let Ok(evt) = task.evt_stream().recv() {
-            let emit_out = window.emit(&task_id, SynchronizationEventJson::from(evt));
-            if let Err(err) = emit_out {
-                eprintln!("Error emitting event - {err}");
-            }
-        }
+        process_evt_stream(&window, &task_id, &task);
 
         let join_out = task.join();
         if let Err(err) = join_out {
             eprintln!("Error joining worker threads - {err}");
         }
 
-        let emit_out = window.emit(&task_id, SynchronizationEventJson::Completed);
+        let emit_out = window.emit(&task_id, [SynchronizationEventJson::Completed]);
         if let Err(err) = emit_out {
             eprintln!("Error emitting event - {err}");
         }
     });
 
     Ok(out)
+}
+
+fn process_evt_stream(window: &Window, task_id: &str, task: &SyncrhonizationTask) {
+    let mut buffer = Vec::new();
+    let mut last_sent = SystemTime::now();
+    while let Ok(evt) = task.evt_stream().recv() {
+        if last_sent.add(Duration::from_millis(500)) > SystemTime::now() {
+            buffer.push(evt);
+        } else {
+            let emit_out = window.emit(task_id, buffer.drain(..).map(SynchronizationEventJson::from).collect::<Vec<_>>());
+            last_sent = SystemTime::now();
+            if let Err(err) = emit_out {
+                eprintln!("Error emitting event - {err}");
+            }
+        }
+    }
+    let emit_out = window.emit(task_id, buffer.drain(..).map(SynchronizationEventJson::from).collect::<Vec<_>>());
+    if let Err(err) = emit_out {
+        eprintln!("Error emitting event - {err}");
+    }
 }
 
 #[derive(Deserialize)]
@@ -184,19 +202,14 @@ pub fn sync_source(window: Window, state: State<PhotoArchiveState>, args: SyncSo
     };
 
     thread::spawn(move || {
-        while let Ok(evt) = task.evt_stream().recv() {
-            let emit_out = window.emit(&task_id, SynchronizationEventJson::from(evt));
-            if let Err(err) = emit_out {
-                eprintln!("Error emitting event - {err}");
-            }
-        }
+        process_evt_stream(&window, &task_id, &task);
 
         let join_out = task.join();
         if let Err(err) = join_out {
             eprintln!("Error joining worker threads - {err}");
         }
 
-        let emit_out = window.emit(&task_id, SynchronizationEventJson::Completed);
+        let emit_out = window.emit(&task_id, [SynchronizationEventJson::Completed]);
         if let Err(err) = emit_out {
             eprintln!("Error emitting event - {err}");
         }
