@@ -94,6 +94,8 @@ pub enum SynchronizationEventJson {
     Stored { src: PathBuf, dst: PathBuf, generated: bool },
     Skipped { src: PathBuf, existing: PathBuf },
     Errored { src: PathBuf, cause: String },
+    ScanProgress { count: u64 },
+    ScanComplete { count: u64 },
     Completed,
 }
 
@@ -103,6 +105,8 @@ impl From<SynchronizationEvent> for SynchronizationEventJson {
             SynchronizationEvent::Stored { src, dst, generated } => Self::Stored { src, dst, generated },
             SynchronizationEvent::Skipped { src, existing } => Self::Skipped { src, existing },
             SynchronizationEvent::Errored { src, cause } => Self::Errored { src, cause },
+            SynchronizationEvent::ScanProgress { count } => Self::ScanProgress { count },
+            SynchronizationEvent::ScanCompleted { count } => Self::ScanComplete { count },
         }
     }
 }
@@ -120,10 +124,11 @@ pub fn import_source(window: Window, state: State<PhotoArchiveState>, args: Impo
         create_dir_all(&archive_dir)
             .context("Error during target dir creation")?;
     } else if !archive_dir.is_dir() {
-        return Err(anyhow!("Target path is not a directory").into())
+        return Err(anyhow!("Target path is not a directory").into());
     }
 
     let task = synchronize_source(SyncOpts {
+        count_images: true,
         source: SyncSource::New {
             id: args.source_id,
             name: args.source_name,
@@ -137,38 +142,36 @@ pub fn import_source(window: Window, state: State<PhotoArchiveState>, args: Impo
         task_id: task_id.clone()
     };
 
-    thread::spawn(move || {
-        process_evt_stream(&window, &task_id, &task);
-
-        let join_out = task.join();
-        if let Err(err) = join_out {
-            eprintln!("Error joining worker threads - {err}");
-        }
-
-        let emit_out = window.emit(&task_id, [SynchronizationEventJson::Completed]);
-        if let Err(err) = emit_out {
-            eprintln!("Error emitting event - {err}");
-        }
-    });
+    thread::spawn(move || process_evt_stream(&window, &task_id, task));
 
     Ok(out)
 }
 
-fn process_evt_stream(window: &Window, task_id: &str, task: &SyncrhonizationTask) {
+fn process_evt_stream(window: &Window, task_id: &str, task: SyncrhonizationTask) {
     let mut buffer = Vec::new();
     let mut last_sent = SystemTime::now();
     while let Ok(evt) = task.evt_stream().recv() {
         if last_sent.add(Duration::from_millis(500)) > SystemTime::now() {
-            buffer.push(evt);
+            buffer.push(SynchronizationEventJson::from(evt));
         } else {
-            let emit_out = window.emit(task_id, buffer.drain(..).map(SynchronizationEventJson::from).collect::<Vec<_>>());
+            let emit_out = window.emit(task_id, buffer.drain(..).collect::<Vec<_>>());
             last_sent = SystemTime::now();
             if let Err(err) = emit_out {
                 eprintln!("Error emitting event - {err}");
             }
         }
     }
-    let emit_out = window.emit(task_id, buffer.drain(..).map(SynchronizationEventJson::from).collect::<Vec<_>>());
+
+    let join_out = task.join();
+    if let Err(err) = join_out {
+        eprintln!("Error joining worker threads - {err}");
+    }
+    if let Ok(dur) = last_sent.add(Duration::from_millis(500)).duration_since(SystemTime::now()) {
+        thread::sleep(dur);
+    }
+    buffer.push(SynchronizationEventJson::Completed);
+
+    let emit_out = window.emit(&task_id, buffer);
     if let Err(err) = emit_out {
         eprintln!("Error emitting event - {err}");
     }
@@ -187,10 +190,11 @@ pub fn sync_source(window: Window, state: State<PhotoArchiveState>, args: SyncSo
         create_dir_all(&archive_dir)
             .context("Error during target dir creation")?;
     } else if !archive_dir.is_dir() {
-        return Err(anyhow!("Target path is not a directory").into())
+        return Err(anyhow!("Target path is not a directory").into());
     }
 
     let task = synchronize_source(SyncOpts {
+        count_images: true,
         source: SyncSource::Existing {
             id: args.source_id,
         },
@@ -201,19 +205,7 @@ pub fn sync_source(window: Window, state: State<PhotoArchiveState>, args: SyncSo
         task_id: task_id.clone()
     };
 
-    thread::spawn(move || {
-        process_evt_stream(&window, &task_id, &task);
-
-        let join_out = task.join();
-        if let Err(err) = join_out {
-            eprintln!("Error joining worker threads - {err}");
-        }
-
-        let emit_out = window.emit(&task_id, [SynchronizationEventJson::Completed]);
-        if let Err(err) = emit_out {
-            eprintln!("Error emitting event - {err}");
-        }
-    });
+    thread::spawn(move || process_evt_stream(&window, &task_id, task));
 
     Ok(out)
 }

@@ -38,9 +38,11 @@ export const importSource = async (args: ImportSourceDto) => await invoke('impor
 
 export const listenEvents = async <T>(source: string, handler: EventCallback<T>) => await appWindow.listen(source, handler);
 
-export type SyncEvent = { evtType: 'completed' }
- | { evtType: 'stored',  src: string, dst: string, generated: boolean }
- | { evtType: 'skipped',  src: string, existing: string }
- | { evtType: 'errored',  src: string, cause: string };
+export type SyncEvent = { eventType: 'completed' }
+ | { eventType: 'stored',  src: string, dst: string, generated: boolean }
+ | { eventType: 'skipped',  src: string, existing: string }
+ | { eventType: 'errored',  src: string, cause: string }
+ | { eventType: 'scan-progress', count: number }
+ | { eventType: 'scan-complete', count: number };
 
 export const listenSyncEvents = listenEvents<SyncEvent[]>;
