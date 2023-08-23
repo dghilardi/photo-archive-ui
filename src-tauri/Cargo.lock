@@ -2117,7 +2117,7 @@ dependencies = [
 [[package]]
 name = "photo-archive"
 version = "0.1.0"
-source = "git+https://github.com/dghilardi/photo-archive.git#2b986c047277d0be80f0f8a296127a287db0e53e"
+source = "git+https://github.com/dghilardi/photo-archive.git#1c183db1cea47ed8fa90dafc30078d5b503d85f0"
 dependencies = [
  "anyhow",
  "chrono",
