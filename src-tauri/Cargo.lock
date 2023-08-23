@@ -748,9 +748,9 @@ checksum = "4ef6b89e5b37196644d8796de5268852ff179b44e96276cf4290264843743bb7"
 
 [[package]]
 name = "encoding_rs"
-version = "0.8.32"
+version = "0.8.33"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "071a31f4ee85403370b58aca746f01041ede6f0da2730960ad001edc2b71b394"
+checksum = "7268b386296a025e474d5140678f75d6de9493ae55a5d709eeb9dd08149945e1"
 dependencies = [
  "cfg-if",
 ]
@@ -2117,7 +2117,7 @@ dependencies = [
 [[package]]
 name = "photo-archive"
 version = "0.1.0"
-source = "git+https://github.com/dghilardi/photo-archive.git#c3d0e99df85198214e8d74f0a673b30cdd30e01f"
+source = "git+https://github.com/dghilardi/photo-archive.git#2b986c047277d0be80f0f8a296127a287db0e53e"
 dependencies = [
  "anyhow",
  "chrono",
