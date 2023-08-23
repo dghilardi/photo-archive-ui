@@ -6,7 +6,7 @@ import { SaveAlt, Sync, SyncDisabled } from "@mui/icons-material";
 import { ArchiveSourceDto, listSources, listenSyncEvents, syncSource } from "./client/commands";
 
 type TaskState = { state: 'idle' } | {
-  state: 'scanning' | 'running',
+  state: 'scanning' | 'running' | 'completed',
   stored: number,
   skipped: number,
   errors: number,
@@ -36,7 +36,7 @@ function App() {
 
       console.log(`evts: ${evt.payload.length} scan: ${scanEvts.length} proc: ${processingEvts.length}`);
       if (isCompleted) {
-        setTaskState({ state: 'idle' });
+        setTaskState(prev => prev.state !== 'idle' ? { ...prev, state: 'completed' } : prev);
       } else {
         setTaskState((prevState) => prevState.state === 'idle' ? prevState
           : {
@@ -84,6 +84,10 @@ function App() {
           ? <>
             <Typography>Processed: {taskState.stored + taskState.skipped + taskState.errors} / {taskState.total}</Typography>
             <LinearProgress variant="indeterminate" />
+            <Stats values={taskState} />
+          </>
+        : taskState.state === 'completed'
+          ? <>
             <Stats values={taskState} />
           </>
           : <>
