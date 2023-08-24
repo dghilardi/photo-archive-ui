@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import "./App.css";
 import Grid from "@mui/material/Unstable_Grid2";
-import { Autocomplete, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, LinearProgress, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from "@mui/material";
+import { Autocomplete, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, LinearProgress, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from "@mui/material";
 import { SaveAlt, Sync, SyncDisabled } from "@mui/icons-material";
 import { ArchiveSourceDto, SyncEvent, importSource, listGroups, listSources, listenSyncEvents, syncSource } from "./client/commands";
 import { EventCallback } from "@tauri-apps/api/event";
