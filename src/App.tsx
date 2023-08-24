@@ -73,7 +73,7 @@ function App() {
               variant="outlined"
               onClick={() => importOrSync(source)}
               fullWidth
-              disabled={source.connection.state === 'disconnected'}
+              disabled={['running', 'scanning'].includes(taskState.state) || source.connection.state === 'disconnected'}
               endIcon={source.connection.state === 'disconnected' ? <SyncDisabled /> : source.registration.state === 'registered' ? <Sync /> : <SaveAlt />}
             >
               <Typography noWrap>{label}</Typography>
