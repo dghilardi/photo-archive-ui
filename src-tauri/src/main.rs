@@ -18,7 +18,7 @@ fn main() {
         .manage(PhotoArchiveState {
             archive_path: Mutex::new(config.archive_dir),
         })
-        .invoke_handler(tauri::generate_handler![commands::list_sources, commands::import_source, commands::sync_source])
+        .invoke_handler(tauri::generate_handler![commands::list_sources, commands::list_groups, commands::import_source, commands::sync_source])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

@@ -17,6 +17,8 @@ export interface ArchiveSourceDto {
 
 export const listSources = async () => await invoke('list_sources') as Array<ArchiveSourceDto>;
 
+export const listGroups = async () => await invoke('list_groups') as Array<string>;
+
 export interface RunningTaskDto {
     taskId: string,
 }

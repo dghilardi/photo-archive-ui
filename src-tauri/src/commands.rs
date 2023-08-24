@@ -1,8 +1,8 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs::create_dir_all;
 use std::ops::Add;
 use std::path::PathBuf;
-use std::thread;
+use std::{iter, thread};
 use std::time::{Duration, SystemTime};
 use anyhow::{anyhow, Context};
 use photo_archive::archive::sync::{SynchronizationEvent, synchronize_source, SyncOpts, SyncrhonizationTask, SyncSource};
@@ -77,6 +77,19 @@ pub fn list_sources(state: State<PhotoArchiveState>) -> common::Result<Vec<Archi
     );
 
     Ok(sources)
+}
+
+#[tauri::command]
+pub fn list_groups(state: State<PhotoArchiveState>) -> common::Result<HashSet<String>> {
+    let archive_dir = { state.archive_path.lock().expect("Error reading archive path") }.clone();
+    let repo = SourcesRepo::new(archive_dir);
+    let groups = repo.all()?
+        .into_iter()
+        .map(|source| source.group)
+        .chain(iter::once(String::from("ROOT")))
+        .collect::<HashSet<_>>();
+
+    Ok(groups)
 }
 
 #[derive(Deserialize)]
@@ -209,3 +222,4 @@ pub fn sync_source(window: Window, state: State<PhotoArchiveState>, args: SyncSo
 
     Ok(out)
 }
+

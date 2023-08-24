@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import "./App.css";
 import Grid from "@mui/material/Unstable_Grid2";
-import { Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, LinearProgress, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from "@mui/material";
+import { Autocomplete, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, LinearProgress, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from "@mui/material";
 import { SaveAlt, Sync, SyncDisabled } from "@mui/icons-material";
-import { ArchiveSourceDto, SyncEvent, importSource, listSources, listenSyncEvents, syncSource } from "./client/commands";
+import { ArchiveSourceDto, SyncEvent, importSource, listGroups, listSources, listenSyncEvents, syncSource } from "./client/commands";
 import { EventCallback } from "@tauri-apps/api/event";
 
 type TaskState = { state: 'idle' } | {
@@ -144,11 +144,17 @@ type ImportDialogModalArgs = {
 const ImportDialogModal = ({ source, onSubmit, onAbort }: ImportDialogModalArgs) => {
   const [name, setName] = useState(!!source ? 'a' : 'b');
   const [group, setGroup] = useState('ROOT');
+  const [registeredGroups, setRegisteredGroups] = useState<string[]>([]);
 
   useEffect(() => {
     const defaultName = source?.connection.state === 'connected' ? source.connection.mountPoint.split('/').reverse()[0] : '-';
     setName(defaultName);
     setGroup('ROOT');
+  }, [source]);
+
+  useEffect(() => {
+    listGroups()
+      .then(groups => setRegisteredGroups(groups))
   }, [source]);
 
   return <Dialog
@@ -172,7 +178,7 @@ const ImportDialogModal = ({ source, onSubmit, onAbort }: ImportDialogModalArgs)
           onChange={e => setName(e.target.value)}
         ></TextField>
 
-        <TextField
+        {/*<TextField
           margin="dense"
           id="group"
           label="Group"
@@ -181,7 +187,13 @@ const ImportDialogModal = ({ source, onSubmit, onAbort }: ImportDialogModalArgs)
           fullWidth
           value={group}
           onChange={e => setGroup(e.target.value)}
-        ></TextField>
+></TextField>*/}
+
+        <GroupSelect 
+          groups={registeredGroups} 
+          value={group}
+          onChange={e => setGroup(e.target.value)}
+        />
 
         <DialogActions>
           <Button onClick={onAbort}>Cancel</Button>
@@ -190,5 +202,25 @@ const ImportDialogModal = ({ source, onSubmit, onAbort }: ImportDialogModalArgs)
       </form>
     </DialogContent>
   </Dialog>;
+}
+
+function GroupSelect({ groups, value, onChange }: { groups: string[], value?: string, onChange?: React.ChangeEventHandler<HTMLInputElement | HTMLTextAreaElement> }) {
+  return (<Autocomplete
+    freeSolo
+    id="group-select-combo"
+    disableClearable
+    options={groups}
+    renderInput={(params) => (
+      <TextField
+        {...params}
+        label="Group"
+        margin="dense"
+        required
+        variant="outlined"
+        value={value}
+        onChange={onChange}
+      />
+    )}
+  />);
 }
 export default App;
