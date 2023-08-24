@@ -150,10 +150,10 @@ pub fn import_source(window: Window, state: State<PhotoArchiveState>, args: Impo
 fn process_evt_stream(window: &Window, task_id: &str, task: SyncrhonizationTask) {
     let mut buffer = Vec::new();
     let mut last_sent = SystemTime::now();
+    
     while let Ok(evt) = task.evt_stream().recv() {
-        if last_sent.add(Duration::from_millis(500)) > SystemTime::now() {
-            buffer.push(SynchronizationEventJson::from(evt));
-        } else {
+        buffer.push(SynchronizationEventJson::from(evt));
+        if last_sent.add(Duration::from_millis(500)) < SystemTime::now() {
             let emit_out = window.emit(task_id, buffer.drain(..).collect::<Vec<_>>());
             last_sent = SystemTime::now();
             if let Err(err) = emit_out {
