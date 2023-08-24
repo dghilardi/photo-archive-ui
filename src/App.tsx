@@ -28,22 +28,21 @@ function App() {
     let isCompleted = !!evt.payload.find(evt => evt.eventType === 'completed');
     let processingEvts = evt.payload.filter(evt => ['stored', 'skipped', 'errored'].includes(evt.eventType));
     let scanEvts = evt.payload.filter(evt => ['scan-complete', 'scan-progress'].includes(evt.eventType));
-    const lastScanEvt = scanEvts.pop();
 
     console.log(`evts: ${evt.payload.length} scan: ${scanEvts.length} proc: ${processingEvts.length}`);
-    if (isCompleted) {
-      setTaskState(prev => prev.state !== 'idle' ? { ...prev, state: 'completed' } : prev);
-    } else {
-      setTaskState((prevState) => prevState.state === 'idle' ? prevState
-        : {
-          state: lastScanEvt?.eventType === 'scan-complete' ? 'running' : prevState.state,
-          total: lastScanEvt?.eventType === 'scan-complete' || lastScanEvt?.eventType === 'scan-progress' ? lastScanEvt.count : prevState.total,
-          stored: prevState.stored + processingEvts.filter(e => e.eventType === 'stored').length,
-          skipped: prevState.skipped + processingEvts.filter(e => e.eventType === 'skipped').length,
-          errors: prevState.errors + processingEvts.filter(e => e.eventType === 'errored').length,
-        }
-      );
-    }
+
+    const lastScanEvt = scanEvts.pop();
+
+
+    setTaskState((prevState) => prevState.state === 'idle' ? prevState
+      : {
+        state: isCompleted ? 'completed' : lastScanEvt?.eventType === 'scan-complete' ? 'running' : prevState.state,
+        total: lastScanEvt?.eventType === 'scan-complete' || lastScanEvt?.eventType === 'scan-progress' ? lastScanEvt.count : prevState.total,
+        stored: prevState.stored + processingEvts.filter(e => e.eventType === 'stored').length,
+        skipped: prevState.skipped + processingEvts.filter(e => e.eventType === 'skipped').length,
+        errors: prevState.errors + processingEvts.filter(e => e.eventType === 'errored').length,
+      }
+    );
   };
 
   const importOrSync = async (source: ArchiveSourceDto) => {
