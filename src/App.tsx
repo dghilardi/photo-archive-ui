@@ -8,9 +8,7 @@ import { EventCallback } from "@tauri-apps/api/event";
 
 type TaskState = { state: 'idle' } | {
   state: 'scanning' | 'running' | 'completed',
-  stored: number,
-  skipped: number,
-  errors: number,
+  metrics: { [key: string]: number }
   total: number,
 };
 
@@ -38,9 +36,13 @@ function App() {
       : {
         state: isCompleted ? 'completed' : lastScanEvt?.eventType === 'scan-complete' ? 'running' : prevState.state,
         total: lastScanEvt?.eventType === 'scan-complete' || lastScanEvt?.eventType === 'scan-progress' ? lastScanEvt.count : prevState.total,
-        stored: prevState.stored + processingEvts.filter(e => e.eventType === 'stored').length,
-        skipped: prevState.skipped + processingEvts.filter(e => e.eventType === 'skipped').length,
-        errors: prevState.errors + processingEvts.filter(e => e.eventType === 'errored').length,
+        metrics: Object.fromEntries(
+          [
+            { name: 'Stored', filter: (evt: SyncEvent) => evt.eventType === 'stored' },
+            { name: 'Skipped', filter: (evt: SyncEvent) => evt.eventType === 'skipped' },
+            { name: 'Errors', filter: (evt: SyncEvent) => evt.eventType === 'errored' }
+          ].map(e => [e.name, (prevState.metrics[e.name] || 0) + processingEvts.filter(e.filter).length])
+        )
       }
     );
   };
@@ -49,7 +51,7 @@ function App() {
     if (source.registration.state === 'registered') {
       let task = await syncSource({ sourceId: source.id });
 
-      setTaskState({ state: 'scanning', stored: 0, skipped: 0, errors: 0, total: 0 });
+      setTaskState({ state: 'scanning', metrics: {}, total: 0 });
       listenSyncEvents(task.taskId, syncEventsListener);
     } else {
       setSelectedSource(source);
@@ -81,19 +83,19 @@ function App() {
       </Grid>
       {taskState.state === 'running'
         ? <>
-          <Typography>Processed: {taskState.stored + taskState.skipped + taskState.errors} / {taskState.total}</Typography>
-          <LinearProgress variant="determinate" value={(taskState.stored + taskState.skipped + taskState.errors) * 100.0 / taskState.total} />
-          <Stats values={taskState} />
+          <Typography>Processed: {Object.entries(taskState.metrics).reduce((acc, [_k, v]) => acc + v, 0)} / {taskState.total}</Typography>
+          <LinearProgress variant="determinate" value={Object.entries(taskState.metrics).reduce((acc, [_k, v]) => acc + v, 0) * 100.0 / taskState.total} />
+          <Stats values={taskState.metrics} />
         </>
         : taskState.state === 'scanning'
           ? <>
-            <Typography>Processed: {taskState.stored + taskState.skipped + taskState.errors} / {taskState.total}</Typography>
+            <Typography>Processed: {Object.entries(taskState.metrics).reduce((acc, [_k, v]) => acc + v, 0)} / {taskState.total}</Typography>
             <LinearProgress variant="indeterminate" />
-            <Stats values={taskState} />
+            <Stats values={taskState.metrics} />
           </>
           : taskState.state === 'completed'
             ? <>
-              <Stats values={taskState} />
+              <Stats values={taskState.metrics} />
             </>
             : <>
             </>
@@ -104,7 +106,7 @@ function App() {
         onSubmit={async ({ name, group }) => {
           setSelectedSource(undefined);
           let task = await importSource({ sourceId: selectedSource?.id || '', sourceName: name, sourceGroup: group, sourceTags: [] });
-          setTaskState({ state: 'scanning', stored: 0, skipped: 0, errors: 0, total: 0 });
+          setTaskState({ state: 'scanning', metrics: {}, total: 0 });
           listenSyncEvents(task.taskId, syncEventsListener);
         }}
       />
@@ -112,22 +114,18 @@ function App() {
   );
 }
 
-const Stats = ({ values }: { values: { stored: number, errors: number, skipped: number } }) => <TableContainer component={Paper}>
+const Stats = ({ values }: { values: { [key: string]: number } }) => <TableContainer component={Paper}>
   <Table sx={{ minWidth: 650 }} aria-label="simple table">
     <TableHead>
       <TableRow>
         <TableCell>Stats</TableCell>
-        <TableCell align="right">Completed</TableCell>
-        <TableCell align="right">Skipped</TableCell>
-        <TableCell align="right">Errors</TableCell>
+        {Object.keys(values).map(k => <TableCell key={k} align="right">{k}</TableCell>)}
       </TableRow>
     </TableHead>
     <TableBody>
       <TableRow>
         <TableCell>-</TableCell>
-        <TableCell align="right">{values.stored}</TableCell>
-        <TableCell align="right">{values.skipped}</TableCell>
-        <TableCell align="right">{values.errors}</TableCell>
+        {Object.entries(values).map(([k, v]) => <TableCell key={k} align="right">{v}</TableCell>)}
       </TableRow>
     </TableBody>
   </Table>
@@ -177,17 +175,6 @@ const ImportDialogModal = ({ source, onSubmit, onAbort }: ImportDialogModalArgs)
           value={name}
           onChange={e => setName(e.target.value)}
         ></TextField>
-
-        {/*<TextField
-          margin="dense"
-          id="group"
-          label="Group"
-          required
-          variant="outlined"
-          fullWidth
-          value={group}
-          onChange={e => setGroup(e.target.value)}
-></TextField>*/}
 
         <GroupSelect 
           groups={registeredGroups} 
