@@ -182,7 +182,7 @@ const ImportDialogModal = ({ source, onSubmit, onAbort }: ImportDialogModalArgs)
         <GroupSelect 
           groups={registeredGroups} 
           value={group}
-          onChange={e => setGroup(e.target.value)}
+          onChange={g => setGroup(g)}
         />
 
         <DialogActions>
@@ -194,12 +194,14 @@ const ImportDialogModal = ({ source, onSubmit, onAbort }: ImportDialogModalArgs)
   </Dialog>;
 }
 
-function GroupSelect({ groups, value, onChange }: { groups: string[], value?: string, onChange?: React.ChangeEventHandler<HTMLInputElement | HTMLTextAreaElement> }) {
+function GroupSelect({ groups, value, onChange }: { groups: string[], value?: string, onChange?: (v: string) => void }) {
   return (<Autocomplete
     freeSolo
     id="group-select-combo"
     disableClearable
     options={groups}
+    onChange={(e, v) => onChange ? onChange(v) : undefined}
+    value={value}
     renderInput={(params) => (
       <TextField
         {...params}
@@ -207,8 +209,6 @@ function GroupSelect({ groups, value, onChange }: { groups: string[], value?: st
         margin="dense"
         required
         variant="outlined"
-        value={value}
-        onChange={onChange}
       />
     )}
   />);
