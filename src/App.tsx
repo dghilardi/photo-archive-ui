@@ -200,7 +200,7 @@ function GroupSelect({ groups, value, onChange }: { groups: string[], value?: st
     id="group-select-combo"
     disableClearable
     options={groups}
-    onChange={(e, v) => onChange ? onChange(v) : undefined}
+    onChange={(_e, v) => onChange ? onChange(v) : undefined}
     value={value}
     renderInput={(params) => (
       <TextField
