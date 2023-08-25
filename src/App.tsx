@@ -38,9 +38,11 @@ function App() {
         total: lastScanEvt?.eventType === 'scan-complete' || lastScanEvt?.eventType === 'scan-progress' ? lastScanEvt.count : prevState.total,
         metrics: Object.fromEntries(
           [
-            { name: 'Stored', filter: (evt: SyncEvent) => evt.eventType === 'stored' && evt.generated },
+            { name: 'Stored', filter: (evt: SyncEvent) => evt.eventType === 'stored' && evt.generated && !evt.partial },
+            { name: 'Partial', filter: (evt: SyncEvent) => evt.eventType === 'stored' && evt.generated && evt.partial },
             { name: 'Linked', filter: (evt: SyncEvent) => evt.eventType === 'stored' && !evt.generated },
             { name: 'Skipped', filter: (evt: SyncEvent) => evt.eventType === 'skipped' },
+            { name: 'Ignored', filter: (evt: SyncEvent) => evt.eventType === 'ignored' },
             { name: 'Errors', filter: (evt: SyncEvent) => evt.eventType === 'errored' }
           ].map(e => [e.name, (prevState.metrics[e.name] || 0) + processingEvts.filter(e.filter).length])
         )

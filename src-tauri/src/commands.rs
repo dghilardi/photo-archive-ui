@@ -104,8 +104,9 @@ pub struct ImportSourceArgs {
 #[derive(Clone, Serialize)]
 #[serde(tag = "eventType", rename_all = "kebab-case")]
 pub enum SynchronizationEventJson {
-    Stored { src: PathBuf, dst: PathBuf, generated: bool },
+    Stored { src: PathBuf, dst: PathBuf, generated: bool, partial: bool },
     Skipped { src: PathBuf, existing: PathBuf },
+    Ignored { src: PathBuf, cause: String },
     Errored { src: PathBuf, cause: String },
     ScanProgress { count: u64 },
     ScanComplete { count: u64 },
@@ -115,8 +116,9 @@ pub enum SynchronizationEventJson {
 impl From<SynchronizationEvent> for SynchronizationEventJson {
     fn from(value: SynchronizationEvent) -> Self {
         match value {
-            SynchronizationEvent::Stored { src, dst, generated } => Self::Stored { src, dst, generated },
+            SynchronizationEvent::Stored { src, dst, generated, partial } => Self::Stored { src, dst, generated, partial },
             SynchronizationEvent::Skipped { src, existing } => Self::Skipped { src, existing },
+            SynchronizationEvent::Ignored { src, cause } => Self::Ignored { src, cause },
             SynchronizationEvent::Errored { src, cause } => Self::Errored { src, cause },
             SynchronizationEvent::ScanProgress { count } => Self::ScanProgress { count },
             SynchronizationEvent::ScanCompleted { count } => Self::ScanComplete { count },
